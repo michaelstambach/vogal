@@ -9,12 +9,14 @@ You can also include images in this folder and reference them in the markdown. E
 
 ## How it works
 
-Explain how your project works
+This is a rudimentary implementation of the bird related game that was very popular in 2013 for some reason.
+Inputs 0 and 1 move the "bird" up and down. Output is through VGA.
 
 ## How to test
 
-Explain how to use your project
+There is a reference implementation in `ref.py`. Running `make` should generate a few frames.
+Generating and comparing reference frames is still a todo.
 
 ## External hardware
 
-List external hardware used in your project (e.g. PMOD, LED display, etc), if any
+This uses the VGA PMOD for video out.
