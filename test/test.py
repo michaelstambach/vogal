@@ -25,7 +25,10 @@ async def test_project(dut):
     V_BACK    =  33
 
     # Number of frames to capture
-    CAPTURE_FRAMES = 3
+    CAPTURE_FRAMES = 5
+
+    # inputs
+    INPUTS = [4, 1, 1, 1, 0]
 
     # Derived constants
     H_SYNC_START = H_DISPLAY + H_FRONT
@@ -109,7 +112,8 @@ async def test_project(dut):
     os.makedirs("output", exist_ok=True)
 
     for i in range(CAPTURE_FRAMES):
-        frame = await capture_frame(i)
+        dut.ui_in.value = INPUTS[i]
+        frame = await capture_frame(i, check_sync=True)
         frame.save(f"output/frame{i}.png")
 
 

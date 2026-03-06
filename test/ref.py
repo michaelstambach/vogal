@@ -1,7 +1,9 @@
 import pygame
 
 
-LEVEL = [0, 44, 30, 3, 3, 44, 22, 10, 13, 12, 51, 28, 44, 13, 6, 25]
+# LEVEL = [25, 44, 30, 3, 3, 44, 22, 10, 13, 12, 51, 28, 44, 13, 6, 0]
+# LEVEL = [0, 6, 13, 44, 28, 51, 12, 13, 10, 22, 44, 3, 3, 30, 33, 25]
+LEVEL = [0, 50, 28, 44, 28, 51, 12, 13, 10, 22, 44, 3, 3, 30, 33, 25]
 
 class Game():
     
@@ -16,10 +18,10 @@ class Game():
             self.game_ongoing = True
             self.level_progress = 0
             self.player_pos = LEVEL[0]
-        elif keymap == 2: # up
-            self.player_pos = (self.player_pos+1) % 54
-        elif keymap == 1: # down
+        elif keymap == 2: # down
             self.player_pos = (self.player_pos-1) % 54
+        elif keymap == 1: # up
+            self.player_pos = (self.player_pos+1) % 54
 
         if self.game_ongoing:
             # background
@@ -30,13 +32,13 @@ class Game():
             pipe_offset = self.level_progress & 0b0000_111111
             for i in range(3):
                 ph = LEVEL[((pipe_idx+i)%16)]<<3
-                uprect = pygame.Rect(i*256+128-(pipe_offset<<2), 0, 64, ph)
-                downrect = pygame.Rect(i*256+128-(pipe_offset<<2), ph+64, 64, 480-ph-64)
+                uprect = pygame.Rect(i*256+127-(pipe_offset<<2), 0, 64, ph)
+                downrect = pygame.Rect(i*256+127-(pipe_offset<<2), ph+64, 64, 480-ph-64)
                 pygame.draw.rect(self.screen, 'green', uprect)
                 pygame.draw.rect(self.screen, 'green', downrect)
 
             # bird
-            birdrect = pygame.Rect(96, self.player_pos<<3, 32, 32)
+            birdrect = pygame.Rect(95, self.player_pos<<3, 32, 32)
             pygame.draw.rect(self.screen, 'red', birdrect)
             self.level_progress += 1
 
@@ -84,8 +86,13 @@ def main():
     
     pygame.quit()
 
-def generate_frames(framecount, inputs):
-    assert len(inputs) == framecount
+def generate_frames(inputs):
+    pygame.init()
+    screen = pygame.Surface((640, 480))
+    game = Game(screen)
+    for i, input in enumerate(inputs):
+        game.render_frame(input)
+        pygame.image.save(screen, f"reference/frame{i}.png")
 
 if __name__ == '__main__':
-    main()
+    generate_frames([0, 4, 1, 1, 1])

@@ -36,11 +36,12 @@ module tt_um_michaelstambach_vogal (
 
     // level config
     // these numbers only require 6 bits but aligining them to 8 bits allows us to calculate the indices without mults
-    localparam [127:0] level = {8'd25, 8'd44, 8'd30, 8'd3, 8'd3, 8'd44, 8'd22, 8'd10, 8'd13, 8'd12, 8'd51, 8'd28, 8'd44, 8'd13, 8'd6, 8'd0};
+    //localparam [127:0] level = {8'd25, 8'd44, 8'd30, 8'd3, 8'd3, 8'd44, 8'd22, 8'd10, 8'd13, 8'd12, 8'd51, 8'd28, 8'd44, 8'd13, 8'd6, 8'd0};
+    localparam [127:0] level = {8'd25, 8'd44, 8'd30, 8'd3, 8'd3, 8'd44, 8'd22, 8'd10, 8'd13, 8'd12, 8'd51, 8'd28, 8'd44, 8'd28, 8'd50, 8'd0};
     // localparam [5:0] level = 6'd31;
 
     // frame counter / level progress
-    logic       frameclk;
+    logic       frame_next;
     logic [9:0] frame_d, frame_q;
     logic [5:0] birdpos_d, birdpos_q;
     logic [3:0] level_idx;
@@ -64,35 +65,37 @@ module tt_um_michaelstambach_vogal (
     assign level_idx = frame_q[9:6];
     assign level_offset = frame_q[5:0];
 
-
-    assign color[0] = ~running_q || (hpos >= 10'd96 && hpos < 10'd128 && vpos[9:4] >= birdpos_q && vpos[9:4] < (birdpos_q + 6'd2));
+    assign color[0] = ~running_q || (hpos >= 10'd96 && hpos < 10'd128 && vpos[8:3] >= birdpos_q && vpos[8:3] < (birdpos_q + 6'd4));
     assign color[1] = running_q && (
-        (hpos[9:2] >= 8'd32 - {level_offset, 2'b0} && hpos[9:2] < 8'd48 - {level_offset, 2'b0} && (vpos[9:4] < level[{level_idx, 3'd0} +: 6] || vpos[9:4] > (level[{level_idx, 3'd0} +: 6] + 6'd4))) ||
-        (hpos[9:2] >= 8'd96 - {level_offset, 2'b0} && hpos[9:2] < 8'd112 - {level_offset, 2'b0} && (vpos[9:4] < level[{level_idx+4'd1, 3'd0} +: 6] || vpos[9:4] > level[{level_idx+4'd1, 3'd0} +: 6] + 6'd4)) ||
-        (hpos[9:2] >= 8'd160 - {level_offset, 2'b0} && hpos[9:2] < 8'd176 - {level_offset, 2'b0} && (vpos[9:4] < level[{level_idx+4'd2, 3'd0} +: 6] || vpos[9:4] > level[{level_idx+4'd2, 3'd0} +: 6] + 6'd4))
+        (hpos[9:2] >= 8'd32 - {'0, level_offset} && hpos[9:2] < 8'd48 - {'0, level_offset} && (vpos[8:3] < level[{level_idx, 3'd0} +: 6] || vpos[8:3] >= (level[{level_idx, 3'd0} +: 6] + 6'd8))) ||
+        (hpos[9:2] >= 8'd96 - {'0, level_offset} && hpos[9:2] < 8'd112 - {'0, level_offset} && (vpos[8:3] < level[{level_idx+4'd1, 3'd0} +: 6] || vpos[8:3] >= level[{level_idx+4'd1, 3'd0} +: 6] + 6'd8)) ||
+        (hpos[9:2] >= 8'd160 - {'0, level_offset} && hpos[9:2] < 8'd176 - {'0, level_offset} && (vpos[8:3] < level[{level_idx+4'd2, 3'd0} +: 6] || vpos[8:3] >= level[{level_idx+4'd2, 3'd0} +: 6] + 6'd8))
     );
 
     assign r_out = ((color == 2'b01) ? 2'b11 : 2'b00) & {2{display_on}};
     assign g_out = ((color == 2'b10) ? 2'b11 : 2'b00) & {2{display_on}};
     assign b_out = ((color == 2'b00) ? 2'b11 : 2'b00) & {2{display_on}};
 
-    // frame clock
-    assign frameclk = hpos == '0 && vpos == '0;
+    // this will go high once per frame
+    assign frame_next = hpos == '0 && vpos == '0;
 
     // frame advancing
-    //assign frame_d = running_q ? (hpos == '0 && vpos == '0) ? frame_q + 10'b1 : frame_q : '0;
-    assign frame_d = running_q ? frame_q + 10'b1 : '0;
+    assign frame_d = running_q ? (frame_next ? frame_q + 10'b1 : frame_q) : '0;
 
     // bird moving logic
     always_comb begin
+        // default: reset
         birdpos_d = '0;
         if (running_q) begin
-            if (ui_in[1:0] == 2'b10) begin
-                birdpos_d = (birdpos_q == '0) ? 6'd0 : (birdpos_q - 1'b1);
-            end else if (ui_in[1:0] == 2'b01) begin
-                birdpos_d = (birdpos_q == 6'd56) ? 6'd56 : (birdpos_q + 1'b1);
-            end else begin
-                birdpos_d = birdpos_q;
+            // if running: keep
+            birdpos_d = birdpos_q;
+            if (frame_next) begin
+                // on new frame: move bird
+                if (ui_in[1:0] == 2'b10) begin
+                    birdpos_d = (birdpos_q == '0) ? 6'd0 : (birdpos_q - 1'b1);
+                end else if (ui_in[1:0] == 2'b01) begin
+                    birdpos_d = (birdpos_q == 6'd56) ? 6'd56 : (birdpos_q + 1'b1);
+                end
             end
         end
     end
@@ -100,7 +103,7 @@ module tt_um_michaelstambach_vogal (
     // game running logic
     always_comb begin
         running_d = '0;
-        if (~running_q && ui_in[2] == 1'b1) begin
+        if (~running_q && ui_in[2] == 1'b1 && frame_next) begin
             running_d = '1;
         end else begin
             running_d = running_q;
@@ -109,21 +112,21 @@ module tt_um_michaelstambach_vogal (
 
 
     // Flipflop
-    always_ff @(posedge frameclk or negedge rst_n) begin
+    always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             frame_q <= 0;
         end else begin
             frame_q <= frame_d;
         end
     end
-    always_ff @(posedge frameclk or negedge rst_n) begin
+    always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             birdpos_q <= 0;
         end else begin
             birdpos_q <= birdpos_d;
         end
     end
-    always_ff @(posedge frameclk or negedge rst_n) begin
+    always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             running_q <= 0;
         end else begin
