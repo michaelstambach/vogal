@@ -35,7 +35,8 @@ module tt_um_michaelstambach_vogal (
     );
 
     // level config
-    localparam [95:0] level = {6'd0, 6'd44, 6'd30, 6'd3, 6'd3, 6'd44, 6'd22, 6'd10, 6'd13, 6'd12, 6'd51, 6'd28, 6'd44, 6'd13, 6'd6, 6'd25};
+    // these numbers only require 6 bits but aligining them to 8 bits allows us to calculate the indices without mults
+    localparam [127:0] level = {8'd25, 8'd44, 8'd30, 8'd3, 8'd3, 8'd44, 8'd22, 8'd10, 8'd13, 8'd12, 8'd51, 8'd28, 8'd44, 8'd13, 8'd6, 8'd0};
     // localparam [5:0] level = 6'd31;
 
     // frame counter / level progress
@@ -62,11 +63,12 @@ module tt_um_michaelstambach_vogal (
     assign level_idx = frame_q[9:6];
     assign level_offset = frame_q[5:0];
 
-    assign color[0] = (hpos >= 96 && hpos < 128 && vpos >= (birdpos_q<<3) && vpos < ((birdpos_q<<3) + 32));
+
+    assign color[0] = (hpos >= 10'd96 && hpos < 10'd128 && vpos[9:4] >= birdpos_q && vpos[9:4] < (birdpos_q + 6'd2));
     assign color[1] = (
-        (hpos >= 10'd128 - (level_offset<<2) && hpos < 10'd192 - (level_offset<<2) && (vpos>>2 < level[level_idx +: 6] || vpos>>2 > level[level_idx +: 6] + 16)) ||
-        (hpos >= 10'd384 - (level_offset<<2) && hpos < 10'd448 - (level_offset<<2) && (vpos>>2 < level[level_idx+4'd6 +: 6] || vpos>>2 > level[level_idx+4'd6 +: 6] + 16)) ||
-        (hpos >= 10'd640 - (level_offset<<2) && hpos < 10'd704 - (level_offset<<2) && (vpos>>2 < level[level_idx+4'd12 +: 6] || vpos>>2 > level[level_idx+4'd12 +: 6] + 16))
+        (hpos[9:2] >= 8'd32 - {level_offset, 2'b0} && hpos[9:2] < 8'd48 - {level_offset, 2'b0} && (vpos[9:4] < level[{level_idx, 3'd0} +: 6] || vpos[9:4] > (level[{level_idx, 3'd0} +: 6] + 6'd4))) ||
+        (hpos[9:2] >= 8'd96 - {level_offset, 2'b0} && hpos[9:2] < 8'd112 - {level_offset, 2'b0} && (vpos[9:4] < level[{level_idx+4'd1, 3'd0} +: 6] || vpos[9:4] > level[{level_idx+4'd1, 3'd0} +: 6] + 6'd4)) ||
+        (hpos[9:2] >= 8'd160 - {level_offset, 2'b0} && hpos[9:2] < 8'd176 - {level_offset, 2'b0} && (vpos[9:4] < level[{level_idx+4'd2, 3'd0} +: 6] || vpos[9:4] > level[{level_idx+4'd2, 3'd0} +: 6] + 6'd4))
     );
 
     assign r_out = ((color == 2'b01) ? 2'b11 : 2'b00) & {2{display_on}};
