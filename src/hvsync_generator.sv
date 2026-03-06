@@ -63,7 +63,7 @@ module hvsync_generator(
   // we could probably get by with not buffering these
   // but this matches the original implementation more closely
   assign hsync_d = ~(hpos_q>=H_SYNC_START && hpos_q<=H_SYNC_END);
-  assign vsync_d = ~(vpos_q>=H_SYNC_START && vpos_q<=H_SYNC_END);
+  assign vsync_d = ~(vpos_q>=V_SYNC_START && vpos_q<=V_SYNC_END);
 
   // flip flap flop
   always_ff @(posedge clk) begin
@@ -105,7 +105,7 @@ module hvsync_generator(
   assign vsync = vsync_q;
 
   // display_on is set when beam is in "safe" visible frame
-  assign display_on = (hpos_q<H_DISPLAY) && (vpos_q<V_DISPLAY);
+  assign display_on = (hpos_q<=H_DISPLAY) && (vpos_q<=V_DISPLAY);
 
 endmodule
 

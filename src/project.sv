@@ -40,11 +40,12 @@ module tt_um_michaelstambach_vogal (
     // localparam [5:0] level = 6'd31;
 
     // frame counter / level progress
+    logic       frameclk;
     logic [9:0] frame_d, frame_q;
     logic [5:0] birdpos_d, birdpos_q;
     logic [3:0] level_idx;
     logic [5:0] level_offset;
-    // logic       running_d, running_q;
+    logic       running_d, running_q;
 
     // Control inputs
     // logic [1:0] keymap = ui_in[1:0];
@@ -64,8 +65,8 @@ module tt_um_michaelstambach_vogal (
     assign level_offset = frame_q[5:0];
 
 
-    assign color[0] = (hpos >= 10'd96 && hpos < 10'd128 && vpos[9:4] >= birdpos_q && vpos[9:4] < (birdpos_q + 6'd2));
-    assign color[1] = (
+    assign color[0] = ~running_q || (hpos >= 10'd96 && hpos < 10'd128 && vpos[9:4] >= birdpos_q && vpos[9:4] < (birdpos_q + 6'd2));
+    assign color[1] = running_q && (
         (hpos[9:2] >= 8'd32 - {level_offset, 2'b0} && hpos[9:2] < 8'd48 - {level_offset, 2'b0} && (vpos[9:4] < level[{level_idx, 3'd0} +: 6] || vpos[9:4] > (level[{level_idx, 3'd0} +: 6] + 6'd4))) ||
         (hpos[9:2] >= 8'd96 - {level_offset, 2'b0} && hpos[9:2] < 8'd112 - {level_offset, 2'b0} && (vpos[9:4] < level[{level_idx+4'd1, 3'd0} +: 6] || vpos[9:4] > level[{level_idx+4'd1, 3'd0} +: 6] + 6'd4)) ||
         (hpos[9:2] >= 8'd160 - {level_offset, 2'b0} && hpos[9:2] < 8'd176 - {level_offset, 2'b0} && (vpos[9:4] < level[{level_idx+4'd2, 3'd0} +: 6] || vpos[9:4] > level[{level_idx+4'd2, 3'd0} +: 6] + 6'd4))
@@ -75,47 +76,60 @@ module tt_um_michaelstambach_vogal (
     assign g_out = ((color == 2'b10) ? 2'b11 : 2'b00) & {2{display_on}};
     assign b_out = ((color == 2'b00) ? 2'b11 : 2'b00) & {2{display_on}};
 
+    // frame clock
+    assign frameclk = hpos == '0 && vpos == '0;
 
-    // main logic
+    // frame advancing
+    //assign frame_d = running_q ? (hpos == '0 && vpos == '0) ? frame_q + 10'b1 : frame_q : '0;
+    assign frame_d = running_q ? frame_q + 10'b1 : '0;
+
+    // bird moving logic
     always_comb begin
-        frame_d = '0;
         birdpos_d = '0;
-        if (hpos == 0 && vpos == 0) begin
-            frame_d = frame_q + 10'b1;
+        if (running_q) begin
             if (ui_in[1:0] == 2'b10) begin
                 birdpos_d = (birdpos_q == '0) ? 6'd0 : (birdpos_q - 1'b1);
             end else if (ui_in[1:0] == 2'b01) begin
                 birdpos_d = (birdpos_q == 6'd56) ? 6'd56 : (birdpos_q + 1'b1);
+            end else begin
+                birdpos_d = birdpos_q;
             end
+        end
+    end
+
+    // game running logic
+    always_comb begin
+        running_d = '0;
+        if (~running_q && ui_in[2] == 1'b1) begin
+            running_d = '1;
         end else begin
-            frame_d = frame_q;
-            birdpos_d = birdpos_q;
+            running_d = running_q;
         end
     end
 
 
     // Flipflop
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge frameclk or negedge rst_n) begin
         if (!rst_n) begin
             frame_q <= 0;
         end else begin
             frame_q <= frame_d;
         end
     end
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge frameclk or negedge rst_n) begin
         if (!rst_n) begin
             birdpos_q <= 0;
         end else begin
             birdpos_q <= birdpos_d;
         end
     end
-    // always_ff @(posedge clk or negedge rst_n) begin
-    //     if (!rst_n) begin
-    //         running_q <= 0;
-    //     end else begin
-    //         running_q <= running_d;
-    //     end
-    // end
+    always_ff @(posedge frameclk or negedge rst_n) begin
+        if (!rst_n) begin
+            running_q <= 0;
+        end else begin
+            running_q <= running_d;
+        end
+    end
 
     // VGA output mapping (RGB222 on Tiny VGA PMOD)
     assign uo_out[0] = r_out[1];  // R1
