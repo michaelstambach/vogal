@@ -27,6 +27,10 @@ class Game():
             # background
             self.screen.fill('blue')
 
+            # pre calculate bird position for collision detection
+            birdrect = pygame.Rect(95, self.player_pos<<3, 32, 32)
+            collided = False
+
             # level / pipes
             pipe_idx = self.level_progress >> 6
             pipe_offset = self.level_progress & 0b0000_111111
@@ -34,19 +38,17 @@ class Game():
                 ph = LEVEL[((pipe_idx+i)%16)]<<3
                 uprect = pygame.Rect(i*256+127-(pipe_offset<<2), 0, 64, ph)
                 downrect = pygame.Rect(i*256+127-(pipe_offset<<2), ph+64, 64, 480-ph-64)
+                if i == 0:
+                    collided = birdrect.colliderect(uprect) or birdrect.colliderect(downrect)
                 pygame.draw.rect(self.screen, 'green', uprect)
                 pygame.draw.rect(self.screen, 'green', downrect)
 
             # bird
-            birdrect = pygame.Rect(95, self.player_pos<<3, 32, 32)
             pygame.draw.rect(self.screen, 'red', birdrect)
             self.level_progress += 1
 
             # intersection check
-            intersecth = pipe_offset < 32 and pipe_offset > 8
-            fph = LEVEL[(pipe_idx%16)]
-            intersectv = self.player_pos < fph or self.player_pos > (fph + 4)
-            if intersectv and intersecth:
+            if collided:
                 self.game_ongoing = False
 
         else:
@@ -95,4 +97,5 @@ def generate_frames(inputs):
         pygame.image.save(screen, f"reference/frame{i}.png")
 
 if __name__ == '__main__':
-    generate_frames([0, 4, 1, 1, 1])
+    generate_frames([0, 4, 1, 1, 1, 1, 1, 1])
+    #main()

@@ -47,6 +47,7 @@ module tt_um_michaelstambach_vogal (
     logic [3:0] level_idx;
     logic [5:0] level_offset;
     logic       running_d, running_q;
+    logic       collided_d, collided_q;
 
     // Control inputs
     // logic [1:0] keymap = ui_in[1:0];
@@ -72,7 +73,7 @@ module tt_um_michaelstambach_vogal (
         (hpos[9:2] >= 8'd160 - {'0, level_offset} && hpos[9:2] < 8'd176 - {'0, level_offset} && (vpos[8:3] < level[{level_idx+4'd2, 3'd0} +: 6] || vpos[8:3] >= level[{level_idx+4'd2, 3'd0} +: 6] + 6'd8))
     );
 
-    assign r_out = ((color == 2'b01) ? 2'b11 : 2'b00) & {2{display_on}};
+    assign r_out = ((color[0] == 1'b1) ? 2'b11 : 2'b00) & {2{display_on}};
     assign g_out = ((color == 2'b10) ? 2'b11 : 2'b00) & {2{display_on}};
     assign b_out = ((color == 2'b00) ? 2'b11 : 2'b00) & {2{display_on}};
 
@@ -105,8 +106,23 @@ module tt_um_michaelstambach_vogal (
         running_d = '0;
         if (~running_q && ui_in[2] == 1'b1 && frame_next) begin
             running_d = '1;
+        end else if (collided_q && frame_next) begin
+            running_d = '0;
         end else begin
             running_d = running_q;
+        end
+    end
+
+    // collision checking
+    always_comb begin
+        collided_d = '0;
+        if (color == 2'b11) begin
+            collided_d = '1;
+        end else if (~running_q) begin
+            // reset once game stopped
+            collided_d = '0;
+        end else begin
+            collided_d = collided_q;
         end
     end
 
@@ -131,6 +147,13 @@ module tt_um_michaelstambach_vogal (
             running_q <= 0;
         end else begin
             running_q <= running_d;
+        end
+    end
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            collided_q <= 0;
+        end else begin
+            collided_q <= collided_d;
         end
     end
 

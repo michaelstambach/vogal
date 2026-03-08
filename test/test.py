@@ -25,10 +25,10 @@ async def test_project(dut):
     V_BACK    =  33
 
     # Number of frames to capture
-    CAPTURE_FRAMES = 5
+    CAPTURE_FRAMES = 8
 
     # inputs
-    INPUTS = [4, 1, 1, 1, 0]
+    INPUTS = [4, 1, 1, 1, 1, 1, 1, 0]
 
     # Derived constants
     H_SYNC_START = H_DISPLAY + H_FRONT
