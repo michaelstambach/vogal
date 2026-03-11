@@ -39,7 +39,7 @@ module tt_um_michaelstambach_vogal (
     //localparam [127:0] level = {8'd25, 8'd44, 8'd30, 8'd3, 8'd3, 8'd44, 8'd22, 8'd10, 8'd13, 8'd12, 8'd51, 8'd28, 8'd44, 8'd13, 8'd6, 8'd0};
     // localparam [127:0] level = {8'd25, 8'd44, 8'd30, 8'd3, 8'd3, 8'd44, 8'd22, 8'd10, 8'd13, 8'd12, 8'd51, 8'd28, 8'd44, 8'd28, 8'd50, 8'd0};
     // localparam [5:0] level = 6'd31;
-    localparam [63:0] level = 64'h6ff57cca59abf0d2;
+    localparam [63:0] level = 64'h0e6c5b9b1d40874d;
     localparam [5:0] level_idx1_step = 6'd7;
     localparam [5:0] level_idx2_step = 6'd5;
 
@@ -76,8 +76,8 @@ module tt_um_michaelstambach_vogal (
             (vpos[8:0] <  (level[(level_idx1_q + level_idx1_step) +: 8] + {1'b0, level[(level_idx2_q + level_idx2_step) +: 7]}) ||
              vpos[8:0] >= (level[(level_idx1_q + level_idx1_step) +: 8] + {1'b0, level[(level_idx2_q + level_idx2_step) +: 7]} + 9'd96))) ||
         (hpos[9:2] >= 8'd160 - {'0, level_offset_q} && hpos[9:2] < 8'd176 - {'0, level_offset_q} && 
-            (vpos[8:0] <  (level[(level_idx1_q + level_idx1_step<<1) +: 8] + {1'b0, level[(level_idx2_q + level_idx1_step<<1) +: 7]}) ||
-             vpos[8:0] >= (level[(level_idx1_q + level_idx1_step<<1) +: 8] + {1'b0, level[(level_idx2_q + level_idx1_step<<1) +: 7]} + 9'd96)))
+            (vpos[8:0] <  (level[(level_idx1_q + 6'd14) +: 8] + {1'b0, level[(level_idx2_q + 6'd10) +: 7]}) ||
+             vpos[8:0] >= (level[(level_idx1_q + 6'd14) +: 8] + {1'b0, level[(level_idx2_q + 6'd10) +: 7]} + 9'd96)))
     );
 
     assign r_out = ((color[0] == 1'b1) ? 2'b11 : 2'b00) & {2{display_on}};

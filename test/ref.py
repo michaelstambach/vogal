@@ -4,7 +4,7 @@ import pygame
 # LEVEL = [25, 44, 30, 3, 3, 44, 22, 10, 13, 12, 51, 28, 44, 13, 6, 0]
 # LEVEL = [0, 6, 13, 44, 28, 51, 12, 13, 10, 22, 44, 3, 3, 30, 33, 25]
 #LEVEL = [0, 50, 28, 44, 28, 51, 12, 13, 10, 22, 44, 3, 3, 30, 33, 25]
-LEVEL = int("6ff57cca59abf0d20e6c5b9b1d40874d", 16)
+LEVEL = int("0e6c5b9b1d40874d", 16)
 
 class Game():
     
@@ -18,7 +18,7 @@ class Game():
         self.level_offset = 0
     
     def render_frame(self, keymap):
-        if keymap == 4: # start game
+        if keymap == 2: # start game
             self.game_ongoing = True
             self.level_offset = 32
             self.level_idx1 = 0
@@ -96,7 +96,7 @@ def main():
         if keys[pygame.K_SPACE]:
             keymap += 1
         if keys[pygame.K_RETURN]:
-            keymap += 4
+            keymap += 2
 
         game.render_frame(keymap)
 
@@ -115,5 +115,5 @@ def generate_frames(inputs):
         pygame.image.save(screen, f"reference/frame{i}.png")
 
 if __name__ == '__main__':
-    generate_frames([0, 4, 0, 0, 0, 0, 0, 0])
+    generate_frames([0, 2, 0, 0, 0, 0, 0, 0])
     #main()
