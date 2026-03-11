@@ -46,7 +46,7 @@ module tt_um_michaelstambach_vogal (
     // frame counter / level progress
     logic       frame_next;
     logic [9:0] birdpos_d, birdpos_q;
-    logic [7:0] birdvel_d, birdvel_q;
+    logic [9:0] birdvel_d, birdvel_q;
     logic [6:0] level_idx1_d, level_idx1_q;
     logic [6:0] level_idx2_d, level_idx2_q;
     logic [5:0] level_offset_d, level_offset_q;
@@ -128,14 +128,14 @@ module tt_um_michaelstambach_vogal (
                 //  update velocity and position
                 if (ui_in[0] == 1'b1) begin
                     birdvel_d = birdvel_q - 8'd3;
-                    birdpos_d = birdpos_q + {2'b00, birdvel_q} - 10'd4;
+                    birdpos_d = birdpos_q + birdvel_q - 10'd4;
                 end else begin
                     birdvel_d = birdvel_q + 8'd1;
-                    birdpos_d = birdpos_q + {2'b00, birdvel_q};
+                    birdpos_d = birdpos_q + birdvel_q;
                 end
                 //  clamp at screen edges
                 if (birdpos_d > 10'd896) begin
-                    if (birdpos_q > 10'd512) begin
+                    if (birdpos_q > 10'd448) begin
                         birdpos_d = 10'd896;
                     end else begin
                         birdpos_d = 10'd0;
