@@ -37,15 +37,20 @@ module tt_um_michaelstambach_vogal (
     // level config
     // these numbers only require 6 bits but aligining them to 8 bits allows us to calculate the indices without mults
     //localparam [127:0] level = {8'd25, 8'd44, 8'd30, 8'd3, 8'd3, 8'd44, 8'd22, 8'd10, 8'd13, 8'd12, 8'd51, 8'd28, 8'd44, 8'd13, 8'd6, 8'd0};
-    localparam [127:0] level = {8'd25, 8'd44, 8'd30, 8'd3, 8'd3, 8'd44, 8'd22, 8'd10, 8'd13, 8'd12, 8'd51, 8'd28, 8'd44, 8'd28, 8'd50, 8'd0};
+    // localparam [127:0] level = {8'd25, 8'd44, 8'd30, 8'd3, 8'd3, 8'd44, 8'd22, 8'd10, 8'd13, 8'd12, 8'd51, 8'd28, 8'd44, 8'd28, 8'd50, 8'd0};
     // localparam [5:0] level = 6'd31;
+    localparam [127:0] level = 128'h6ff57cca59abf0d20e6c5b9b1d40874d;
+    localparam [6:0] level_idx1_step = 7'd7;
+    localparam [6:0] level_idx2_step = 7'd5;
 
     // frame counter / level progress
     logic       frame_next;
     logic [9:0] frame_d, frame_q;
-    logic [5:0] birdpos_d, birdpos_q;
-    logic [3:0] level_idx;
-    logic [5:0] level_offset;
+    logic [9:0] birdpos_d, birdpos_q;
+    logic [9:0] birdvel_d, birdvel_q;
+    logic [6:0] level_idx1_d, level_idx1_q;
+    logic [6:0] level_idx2_d, level_idx2_q;
+    logic [5:0] level_offset_d, level_offset_q;
     logic       running_d, running_q;
     logic       collided_d, collided_q;
 
@@ -63,14 +68,17 @@ module tt_um_michaelstambach_vogal (
     logic [1:0] g_out;
     logic [1:0] b_out;
 
-    assign level_idx = frame_q[9:6];
-    assign level_offset = frame_q[5:0];
-
-    assign color[0] = ~running_q || (hpos >= 10'd96 && hpos < 10'd128 && vpos[8:3] >= birdpos_q && vpos[8:3] < (birdpos_q + 6'd4));
+    assign color[0] = ~running_q || (hpos >= 10'd96 && hpos < 10'd128 && vpos[8:0] >= birdpos_q[9:1] && vpos[8:0] < (birdpos_q[9:1] + 9'd32));
     assign color[1] = running_q && (
-        (hpos[9:2] >= 8'd32 - {'0, level_offset} && hpos[9:2] < 8'd48 - {'0, level_offset} && (vpos[8:3] < level[{level_idx, 3'd0} +: 6] || vpos[8:3] >= (level[{level_idx, 3'd0} +: 6] + 6'd8))) ||
-        (hpos[9:2] >= 8'd96 - {'0, level_offset} && hpos[9:2] < 8'd112 - {'0, level_offset} && (vpos[8:3] < level[{level_idx+4'd1, 3'd0} +: 6] || vpos[8:3] >= level[{level_idx+4'd1, 3'd0} +: 6] + 6'd8)) ||
-        (hpos[9:2] >= 8'd160 - {'0, level_offset} && hpos[9:2] < 8'd176 - {'0, level_offset} && (vpos[8:3] < level[{level_idx+4'd2, 3'd0} +: 6] || vpos[8:3] >= level[{level_idx+4'd2, 3'd0} +: 6] + 6'd8))
+        (hpos[9:2] + {'0, level_offset_q} >= 8'd32 && hpos[9:2] + {'0, level_offset_q} < 8'd48 && 
+            (vpos[8:0] <  (level[level_idx1_q +: 8] + {1'b0, level[level_idx2_q +: 7]}) ||
+             vpos[8:0] >= (level[level_idx1_q +: 8] + {1'b0, level[level_idx2_q +: 7]} + 9'd96))) ||
+        (hpos[9:2] >= 8'd96 - {'0, level_offset_q} && hpos[9:2] < 8'd112 - {'0, level_offset_q} && 
+            (vpos[8:0] <  (level[(level_idx1_q + level_idx1_step) +: 8] + {1'b0, level[(level_idx2_q + level_idx2_step) +: 7]}) ||
+             vpos[8:0] >= (level[(level_idx1_q + level_idx1_step) +: 8] + {1'b0, level[(level_idx2_q + level_idx2_step) +: 7]} + 9'd96))) ||
+        (hpos[9:2] >= 8'd160 - {'0, level_offset_q} && hpos[9:2] < 8'd176 - {'0, level_offset_q} && 
+            (vpos[8:0] <  (level[(level_idx1_q + 7'd2*level_idx1_step) +: 8] + {1'b0, level[(level_idx2_q + 7'd2*level_idx2_step) +: 7]}) ||
+             vpos[8:0] >= (level[(level_idx1_q + 7'd2*level_idx1_step) +: 8] + {1'b0, level[(level_idx2_q + 7'd2*level_idx2_step) +: 7]} + 9'd96)))
     );
 
     assign r_out = ((color[0] == 1'b1) ? 2'b11 : 2'b00) & {2{display_on}};
@@ -83,19 +91,59 @@ module tt_um_michaelstambach_vogal (
     // frame advancing
     assign frame_d = running_q ? (frame_next ? frame_q + 10'b1 : frame_q) : '0;
 
+    // indexes (level advancing)
+    always_comb begin
+        level_idx1_d = '0;
+        level_idx2_d = '0;
+        level_offset_d = 6'd32; // start at 32 offset (more playable)
+        if (running_q) begin
+            if (frame_next) begin
+                if (level_offset_q == 6'd63) begin
+                    // advance indices
+                    level_idx1_d = level_idx1_q + level_idx1_step;
+                    level_idx2_d = level_idx2_q + level_idx2_step;
+                    level_offset_d = 6'd0;
+                end else begin
+                    // advance offset
+                    level_idx1_d = level_idx1_q;
+                    level_idx2_d = level_idx2_q;
+                    level_offset_d = level_offset_q + 6'd1;
+                end
+            end else begin
+                // not on frame boundary -> keep values
+                level_idx1_d = level_idx1_q;
+                level_idx2_d = level_idx2_q;
+                level_offset_d = level_offset_q;
+            end
+        end
+    end
+
     // bird moving logic
     always_comb begin
         // default: reset
         birdpos_d = '0;
+        birdvel_d = '0;
         if (running_q) begin
             // if running: keep
             birdpos_d = birdpos_q;
+            birdvel_d = birdvel_q;
             if (frame_next) begin
                 // on new frame: move bird
-                if (ui_in[1:0] == 2'b10) begin
-                    birdpos_d = (birdpos_q == '0) ? 6'd0 : (birdpos_q - 1'b1);
-                end else if (ui_in[1:0] == 2'b01) begin
-                    birdpos_d = (birdpos_q == 6'd56) ? 6'd56 : (birdpos_q + 1'b1);
+                //  update velocity and position
+                if (ui_in[0] == 1'b1) begin
+                    birdvel_d = birdvel_q - 10'd3;
+                    birdpos_d = birdpos_q + birdvel_q - 10'd4;
+                end else begin
+                    birdvel_d = birdvel_q + 10'd1;
+                    birdpos_d = birdpos_q + birdvel_q;
+                end
+                //  clamp at screen edges
+                if (birdpos_d > 10'd896) begin
+                    if (birdpos_q > 10'd448) begin
+                        birdpos_d = 10'd896;
+                    end else begin
+                        birdpos_d = 10'd0;
+                    end
                 end
             end
         end
@@ -144,6 +192,13 @@ module tt_um_michaelstambach_vogal (
     end
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
+            birdvel_q <= 0;
+        end else begin
+            birdvel_q <= birdvel_d;
+        end
+    end
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
             running_q <= 0;
         end else begin
             running_q <= running_d;
@@ -154,6 +209,27 @@ module tt_um_michaelstambach_vogal (
             collided_q <= 0;
         end else begin
             collided_q <= collided_d;
+        end
+    end
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            level_idx1_q <= 0;
+        end else begin
+            level_idx1_q <= level_idx1_d;
+        end
+    end
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            level_idx2_q <= 0;
+        end else begin
+            level_idx2_q <= level_idx2_d;
+        end
+    end
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            level_offset_q <= 0;
+        end else begin
+            level_offset_q <= level_offset_d;
         end
     end
 

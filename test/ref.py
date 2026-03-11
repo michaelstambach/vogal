@@ -3,41 +3,48 @@ import pygame
 
 # LEVEL = [25, 44, 30, 3, 3, 44, 22, 10, 13, 12, 51, 28, 44, 13, 6, 0]
 # LEVEL = [0, 6, 13, 44, 28, 51, 12, 13, 10, 22, 44, 3, 3, 30, 33, 25]
-LEVEL = [0, 50, 28, 44, 28, 51, 12, 13, 10, 22, 44, 3, 3, 30, 33, 25]
+#LEVEL = [0, 50, 28, 44, 28, 51, 12, 13, 10, 22, 44, 3, 3, 30, 33, 25]
+LEVEL = int("6ff57cca59abf0d20e6c5b9b1d40874d", 16)
 
 class Game():
     
     def __init__(self, screen):
         self.screen = screen
         self.game_ongoing = False
-        self.player_pos = LEVEL[0]
-        self.level_progress = 0
+        self.player_pos = 0
+        self.player_vel = 0
+        self.level_idx1 = 0
+        self.level_idx2 = 0
+        self.level_offset = 0
     
     def render_frame(self, keymap):
         if keymap == 4: # start game
             self.game_ongoing = True
-            self.level_progress = 0
-            self.player_pos = LEVEL[0]
-        elif keymap == 2: # down
-            self.player_pos = (self.player_pos-1) % 54
-        elif keymap == 1: # up
-            self.player_pos = (self.player_pos+1) % 54
+            self.level_offset = 32
+            self.level_idx1 = 0
+            self.level_idx2 = 0
+            self.player_pos = 0
+            self.player_vel = 0
+        #elif keymap == 2: # down
+            #self.player_pos = (self.player_pos-(1<<4)) % (448<<1)
+        elif keymap == 1: # flap
+            #self.player_pos = (self.player_pos+(1<<4)) % (448<<1)
+            self.player_vel -= 4
 
         if self.game_ongoing:
             # background
             self.screen.fill('blue')
 
             # pre calculate bird position for collision detection
-            birdrect = pygame.Rect(95, self.player_pos<<3, 32, 32)
+            birdrect = pygame.Rect(95, self.player_pos>>1, 32, 32)
             collided = False
 
             # level / pipes
-            pipe_idx = self.level_progress >> 6
-            pipe_offset = self.level_progress & 0b0000_111111
             for i in range(3):
-                ph = LEVEL[((pipe_idx+i)%16)]<<3
-                uprect = pygame.Rect(i*256+127-(pipe_offset<<2), 0, 64, ph)
-                downrect = pygame.Rect(i*256+127-(pipe_offset<<2), ph+64, 64, 480-ph-64)
+                ph = ((LEVEL >> (self.level_idx1 + 7*i)%64) & 0b11111111) + \
+                     ((LEVEL >> (self.level_idx2 + 5*i)%64) & 0b1111111)
+                uprect = pygame.Rect(i*256+127-(self.level_offset<<2), 0, 64, ph)
+                downrect = pygame.Rect(i*256+127-(self.level_offset<<2), ph+96, 64, 480-ph-96)
                 if i == 0:
                     collided = birdrect.colliderect(uprect) or birdrect.colliderect(downrect)
                 pygame.draw.rect(self.screen, 'green', uprect)
@@ -45,11 +52,24 @@ class Game():
 
             # bird
             pygame.draw.rect(self.screen, 'red', birdrect)
-            self.level_progress += 1
+            if self.level_offset == 63:
+                self.level_offset = 0
+                self.level_idx1 = (self.level_idx1 + 7) % 64
+                self.level_idx2 = (self.level_idx2 + 5) % 64
+            else:
+                self.level_offset += 1
 
             # intersection check
             if collided:
                 self.game_ongoing = False
+            
+            # update position
+            self.player_pos += self.player_vel
+            if self.player_pos < 0:
+                self.player_pos = 0
+            elif self.player_pos > 896:
+                self.player_pos = 896
+            self.player_vel += 1
 
         else:
             self.screen.fill('red')
@@ -73,10 +93,8 @@ def main():
         keys = pygame.key.get_pressed()
         # this is kinda silly but more like hardware
         keymap = 0
-        if keys[pygame.K_UP]:
+        if keys[pygame.K_SPACE]:
             keymap += 1
-        if keys[pygame.K_DOWN]:
-            keymap += 2
         if keys[pygame.K_RETURN]:
             keymap += 4
 
@@ -97,5 +115,5 @@ def generate_frames(inputs):
         pygame.image.save(screen, f"reference/frame{i}.png")
 
 if __name__ == '__main__':
-    generate_frames([0, 4, 1, 1, 1, 1, 1, 1])
+    generate_frames([0, 4, 0, 0, 0, 0, 0, 0])
     #main()
